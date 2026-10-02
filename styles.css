@@ -1,0 +1,59 @@
+:root{
+  --bg:#0f1222; --bg2:#161a30; --card:#1c2140; --line:#2a3054;
+  --txt:#eef0ff; --muted:#a3a9d1; --acc:#7c6cff; --acc2:#00d4b8; --price:#ffd166;
+}
+*{box-sizing:border-box;margin:0;padding:0}
+html{scroll-behavior:smooth}
+body{background:var(--bg);color:var(--txt);font-family:system-ui,-apple-system,"Segoe UI",Roboto,sans-serif;line-height:1.6}
+a{color:inherit}
+.nav{position:sticky;top:0;z-index:10;display:flex;justify-content:space-between;align-items:center;
+  padding:.8rem 1.2rem;background:rgba(15,18,34,.92);backdrop-filter:blur(8px);border-bottom:1px solid var(--line)}
+.brand{font-weight:800;font-size:1.15rem;text-decoration:none}
+.nav nav{display:flex;gap:1rem}
+.nav nav a{text-decoration:none;color:var(--muted);font-size:.95rem}
+.nav nav a:hover{color:var(--txt)}
+.hero{padding:4.5rem 1.2rem 3.5rem;text-align:center;
+  background:radial-gradient(600px 300px at 50% -50px,rgba(124,108,255,.25),transparent)}
+.hero-inner{max-width:640px;margin:0 auto}
+.hero h1{font-size:clamp(1.7rem,5.5vw,2.8rem);line-height:1.25;margin-bottom:.8rem}
+.hero .sub{color:var(--muted);font-size:1.05rem;margin-bottom:1.6rem}
+.cta-row{display:flex;gap:.8rem;justify-content:center;flex-wrap:wrap;margin-bottom:1.4rem}
+.btn{display:inline-block;padding:.7rem 1.5rem;border-radius:999px;text-decoration:none;font-weight:700;border:1px solid transparent;cursor:pointer;font-size:1rem}
+.btn.primary{background:linear-gradient(135deg,var(--acc),#5a4fe0);color:#fff}
+.btn.ghost{border-color:var(--line);color:var(--txt);background:transparent}
+.badges{display:flex;gap:.6rem;justify-content:center;flex-wrap:wrap;color:var(--muted);font-size:.9rem}
+.section{max-width:1100px;margin:0 auto;padding:3rem 1.2rem}
+.section h2{font-size:1.6rem;margin-bottom:.4rem}
+.section-sub{color:var(--muted);margin-bottom:1.8rem;max-width:640px}
+.grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(240px,1fr));gap:1.1rem}
+.card{background:var(--card);border:1px solid var(--line);border-radius:14px;overflow:hidden;display:flex;flex-direction:column;transition:transform .15s}
+.card:hover{transform:translateY(-3px)}
+.card img{width:100%;aspect-ratio:16/9;object-fit:cover;background:var(--bg2)}
+.card-body{padding:1rem;display:flex;flex-direction:column;gap:.5rem;flex:1}
+.card-body h3{font-size:1.02rem}
+.card-body p{color:var(--muted);font-size:.88rem;flex:1}
+.price{color:var(--price);font-weight:800;font-size:1.1rem}
+.buy-row{display:flex;gap:.5rem}
+.buy-row a{flex:1;text-align:center;padding:.55rem .3rem;border-radius:10px;font-size:.85rem;font-weight:700;text-decoration:none}
+.buy-tok{background:#03ac0e;color:#fff}
+.buy-shp{background:#ee4d2d;color:#fff}
+.chat-card{max-width:640px;background:var(--card);border:1px solid var(--line);border-radius:16px;overflow:hidden}
+.chat-log{height:380px;overflow-y:auto;padding:1rem;display:flex;flex-direction:column;gap:.7rem}
+.msg{display:flex}
+.msg.user{justify-content:flex-end}
+.bubble{max-width:82%;padding:.65rem .95rem;border-radius:14px;font-size:.95rem;white-space:pre-wrap;word-break:break-word}
+.msg.ai .bubble{background:var(--bg2);border:1px solid var(--line);border-bottom-left-radius:4px}
+.msg.user .bubble{background:linear-gradient(135deg,var(--acc),#5a4fe0);color:#fff;border-bottom-right-radius:4px}
+.bubble.typing{opacity:.6}
+.chat-form{display:flex;gap:.6rem;padding:.8rem;border-top:1px solid var(--line)}
+.chat-form input{flex:1;background:var(--bg2);border:1px solid var(--line);border-radius:999px;padding:.7rem 1.1rem;color:var(--txt);font-size:.95rem;outline:none}
+.chat-form input:focus{border-color:var(--acc)}
+.chat-note{padding:.6rem 1rem;color:var(--muted);font-size:.78rem;border-top:1px solid var(--line)}
+.about-card{background:var(--card);border:1px solid var(--line);border-radius:16px;padding:1.6rem;max-width:640px}
+.about-card p{color:var(--muted);margin-bottom:1.2rem}
+.about-card b{color:var(--txt)}
+.link-hub{display:flex;flex-wrap:wrap;gap:.6rem}
+.link-hub a{padding:.6rem 1.1rem;border:1px solid var(--line);border-radius:999px;text-decoration:none;font-size:.9rem;background:var(--bg2)}
+.link-hub a:hover{border-color:var(--acc)}
+footer{text-align:center;padding:2rem 1rem;color:var(--muted);font-size:.85rem;border-top:1px solid var(--line)}
+@media(max-width:560px){.nav nav{gap:.7rem}.nav nav a{font-size:.85rem}}
