@@ -49,6 +49,13 @@ a{color:inherit}
 .chat-form input{flex:1;background:var(--bg2);border:1px solid var(--line);border-radius:999px;padding:.7rem 1.1rem;color:var(--txt);font-size:.95rem;outline:none}
 .chat-form input:focus{border-color:var(--acc)}
 .chat-note{padding:.6rem 1rem;color:var(--muted);font-size:.78rem;border-top:1px solid var(--line)}
+.faq-list{max-width:640px;display:flex;flex-direction:column;gap:.7rem}
+.faq-list details{background:var(--card);border:1px solid var(--line);border-radius:12px;padding:1rem 1.2rem}
+.faq-list summary{cursor:pointer;font-weight:700;list-style:none}
+.faq-list summary::-webkit-details-marker{display:none}
+.faq-list summary::before{content:"▸ ";color:var(--acc)}
+.faq-list details[open] summary::before{content:"▾ "}
+.faq-list details p{color:var(--muted);font-size:.93rem;margin-top:.6rem}
 .about-card{background:var(--card);border:1px solid var(--line);border-radius:16px;padding:1.6rem;max-width:640px}
 .about-card p{color:var(--muted);margin-bottom:1.2rem}
 .about-card b{color:var(--txt)}
