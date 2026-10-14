@@ -29,6 +29,8 @@
   .legend b { color: #fff; }
   .ship-icon { text-align: center; line-height: 1; }
   .ship-icon .arrow { display: inline-block; font-size: 20px; text-shadow: 0 0 3px #000; }
+  .ship-icon.stale .arrow { opacity: 0.35; }
+  .stale-note { color: #fbbf24; font-weight: 600; }
   .leaflet-popup-content-wrapper { background: #111827; color: #e5e7eb; }
   .leaflet-popup-content { margin: .7rem .9rem; font-size: .85rem; line-height: 1.6; }
   .leaflet-popup-content b { color: #fff; }
@@ -159,7 +161,8 @@ function popupHtml(v) {
     `Tujuan: ${escapeHtml(v.destination)} &nbsp; ETA: ${escapeHtml(v.eta)}<br>` +
     `Posisi: ${v.lat.toFixed(4)}, ${v.lon.toFixed(4)}<br>` +
     (v.station ? `Stasiun: ${escapeHtml(v.station)}<br>` : "") +
-    `<span class="muted">Update: ${escapeHtml(seen)}</span>`;
+    `<span class="muted">Update: ${escapeHtml(seen)}</span>` +
+    (isStale(v) ? `<br><span class="stale-note">⚠ Posisi basi (&gt;5 menit)</span>` : "");
 }
 
 function escapeHtml(s) {
@@ -168,7 +171,15 @@ function escapeHtml(s) {
 
 let allVessels = [];
 
-// Jejak kapal: riwayat posisi per MMSI, max 20 titik. Dicatat tiap refresh,
+// Posisi dianggap basi (stale) kalau update terakhir > 5 menit lalu.
+// Marker kapal basi ditampilkan redup + popup menampilkan peringatan.
+const STALE_MS = 5 * 60 * 1000;
+
+function isStale(v) {
+  if (!v.updatedAt) return false;
+  const t = Date.parse(v.updatedAt);
+  return Number.isFinite(t) && Date.now() - t > STALE_MS;
+}
 // digambar sebagai polyline sewarna status kapal. Titik identik berurutan di-skip.
 const trails = new Map();
 const MAX_TRAIL = 20;
@@ -211,7 +222,7 @@ function render() {
     }
     const color = colorFor(v.navStatus);
     const icon = L.divIcon({
-      className: "ship-icon",
+      className: "ship-icon" + (isStale(v) ? " stale" : ""),
       html: `<span class="arrow" style="color:${color};transform:rotate(${v.heading}deg)">▲</span>`,
       iconSize: [20, 20],
       iconAnchor: [10, 10],
