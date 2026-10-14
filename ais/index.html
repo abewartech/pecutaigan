@@ -60,6 +60,7 @@
   <span style="color:#eab308">▲</span> Jangkar &nbsp;
   <span style="color:#60a5fa">▲</span> Sandar &nbsp;
   <span style="color:#9ca3af">▲</span> Tidak diketahui<br>
+  <span id="status-counts" class="muted"></span><br>
   <span class="muted">Arah segitiga = haluan kapal. Klik kapal untuk detail.</span>
 </div>
 
@@ -255,6 +256,17 @@ function render() {
       .addTo(layer);
   }
   countEl.textContent = shown.length + " kapal ditampilkan dari " + allVessels.length + " total";
+  // Hitungan per status (dari kapal yang tampil, sesuai filter aktif).
+  const counts = {};
+  for (const v of shown) {
+    const label = navLabel(v.navStatus);
+    counts[label] = (counts[label] || 0) + 1;
+  }
+  const countsEl = document.getElementById("status-counts");
+  countsEl.textContent = Object.entries(counts)
+    .sort((a, b) => b[1] - a[1])
+    .map(([label, n]) => label + ": " + n)
+    .join(" · ");
 }
 
 async function load(demoFallback = true) {
