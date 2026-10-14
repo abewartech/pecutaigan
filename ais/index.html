@@ -23,6 +23,7 @@
   .controls select { max-width: 200px; }
   .controls button { background: #2563eb; color: #fff; border: 0; border-radius: 6px; padding: .45rem .8rem; cursor: pointer; font-size: .85rem; }
   .controls button:hover { background: #1d4ed8; }
+  .toggle { font-size: .85rem; display: flex; align-items: center; gap: .3rem; cursor: pointer; }
   #map { height: calc(100vh - 52px); width: 100%; background: #0b1220; }
   .legend { position: absolute; bottom: 12px; left: 12px; z-index: 1000; background: rgba(17,24,39,.92); padding: .6rem .8rem; border-radius: 8px; font-size: .78rem; line-height: 1.7; border: 1px solid #374151; }
   .legend b { color: #fff; }
@@ -46,6 +47,7 @@
   <div class="controls">
     <input id="search" type="search" placeholder="Cari nama / MMSI…" aria-label="Cari kapal">
     <select id="station" aria-label="Filter stasiun VTS"><option value="">Semua stasiun VTS</option></select>
+    <label class="toggle"><input id="trails-toggle" type="checkbox" checked> Jejak</label>
     <button id="refresh" type="button">↻ Refresh</button>
   </div>
 </header>
@@ -89,6 +91,7 @@ L.tileLayer("https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png", {
 }).addTo(map);
 
 const layer = L.layerGroup().addTo(map);
+const trailLayer = L.layerGroup().addTo(map);
 const statusEl = document.getElementById("status");
 const countEl = document.getElementById("count");
 const searchEl = document.getElementById("search");
@@ -165,8 +168,31 @@ function escapeHtml(s) {
 
 let allVessels = [];
 
+// Jejak kapal: riwayat posisi per MMSI, max 20 titik. Dicatat tiap refresh,
+// digambar sebagai polyline sewarna status kapal. Titik identik berurutan di-skip.
+const trails = new Map();
+const MAX_TRAIL = 20;
+let trailsVisible = true;
+
+function recordTrail(v) {
+  const pts = trails.get(v.mmsi) || [];
+  const last = pts[pts.length - 1];
+  if (!last || last[0] !== v.lat || last[1] !== v.lon) {
+    pts.push([v.lat, v.lon]);
+    if (pts.length > MAX_TRAIL) pts.shift();
+    trails.set(v.mmsi, pts);
+  }
+}
+
+function pruneTrails(seenMmsis) {
+  for (const mmsi of [...trails.keys()]) {
+    if (!seenMmsis.has(mmsi)) trails.delete(mmsi);
+  }
+}
+
 function render() {
   layer.clearLayers();
+  trailLayer.clearLayers();
   const q = searchEl.value.trim().toLowerCase();
   const st = stationEl.value;
   const shown = allVessels.filter((v) => {
@@ -174,7 +200,15 @@ function render() {
     if (q && !(v.name.toLowerCase().includes(q) || v.mmsi.includes(q))) return false;
     return true;
   });
+  pruneTrails(new Set(allVessels.map((v) => v.mmsi)));
   for (const v of shown) {
+    recordTrail(v);
+    if (trailsVisible) {
+      const pts = trails.get(v.mmsi) || [];
+      if (pts.length >= 2) {
+        L.polyline(pts, { color: colorFor(v.navStatus), weight: 2, opacity: 0.6 }).addTo(trailLayer);
+      }
+    }
     const color = colorFor(v.navStatus);
     const icon = L.divIcon({
       className: "ship-icon",
@@ -221,6 +255,10 @@ async function load(demoFallback = true) {
 
 searchEl.addEventListener("input", render);
 stationEl.addEventListener("change", render);
+document.getElementById("trails-toggle").addEventListener("change", (e) => {
+  trailsVisible = e.target.checked;
+  render();
+});
 document.getElementById("refresh").addEventListener("click", () => load(false));
 
 load();
