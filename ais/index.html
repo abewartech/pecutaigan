@@ -50,6 +50,7 @@
     <input id="search" type="search" placeholder="Cari nama / MMSI…" aria-label="Cari kapal">
     <select id="station" aria-label="Filter stasiun VTS"><option value="">Semua stasiun VTS</option></select>
     <label class="toggle"><input id="trails-toggle" type="checkbox" checked> Jejak</label>
+    <button id="fit-bounds" type="button">⌖ Pas-kan Peta</button>
     <button id="refresh" type="button">↻ Refresh</button>
   </div>
 </header>
@@ -225,16 +226,20 @@ function pruneTrails(seenMmsis) {
   }
 }
 
-function render() {
-  layer.clearLayers();
-  trailLayer.clearLayers();
+function getShown() {
   const q = searchEl.value.trim().toLowerCase();
   const st = stationEl.value;
-  const shown = allVessels.filter((v) => {
+  return allVessels.filter((v) => {
     if (st && v.station !== st) return false;
     if (q && !(v.name.toLowerCase().includes(q) || v.mmsi.includes(q))) return false;
     return true;
   });
+}
+
+function render() {
+  layer.clearLayers();
+  trailLayer.clearLayers();
+  const shown = getShown();
   pruneTrails(new Set(allVessels.map((v) => v.mmsi)));
   for (const v of shown) {
     recordTrail(v);
@@ -304,6 +309,12 @@ stationEl.addEventListener("change", render);
 document.getElementById("trails-toggle").addEventListener("change", (e) => {
   trailsVisible = e.target.checked;
   render();
+});
+document.getElementById("fit-bounds").addEventListener("click", () => {
+  const shown = getShown();
+  if (!shown.length) return;
+  const bounds = L.latLngBounds(shown.map((v) => [v.lat, v.lon]));
+  map.fitBounds(bounds.pad ? bounds.pad(0.1) : bounds);
 });
 document.getElementById("refresh").addEventListener("click", () => load(false));
 
