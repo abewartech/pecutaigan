@@ -1,0 +1,230 @@
+<!DOCTYPE html>
+<html lang="id">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Peta Kapal AIS — PecutAigan</title>
+<meta name="description" content="Peta live posisi kapal dari data AIS stasiun VTS Indonesia.">
+<meta name="robots" content="index, follow">
+<link rel="canonical" href="https://pecutaigan.my.id/ais/">
+<link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" integrity="sha256-p4NxAoJBhIIN+hmNHrzRCf9tD/miZyoHS5obTRR9BMY=" crossorigin="">
+<style>
+  * { box-sizing: border-box; margin: 0; padding: 0; }
+  body { font-family: system-ui, -apple-system, "Segoe UI", Roboto, sans-serif; background: #0b1220; color: #e5e7eb; }
+  header { display: flex; align-items: center; gap: 1rem; padding: .7rem 1rem; background: #111827; border-bottom: 1px solid #1f2937; flex-wrap: wrap; }
+  header a.brand { color: #fff; text-decoration: none; font-weight: 700; font-size: 1.05rem; }
+  header .status { font-size: .8rem; padding: .25rem .6rem; border-radius: 999px; background: #1f2937; }
+  header .status.live { background: #14532d; color: #bbf7d0; }
+  header .status.demo { background: #713f12; color: #fde68a; }
+  header .status.error { background: #7f1d1d; color: #fecaca; }
+  .controls { display: flex; gap: .5rem; flex-wrap: wrap; align-items: center; margin-left: auto; }
+  .controls input, .controls select { background: #1f2937; color: #e5e7eb; border: 1px solid #374151; border-radius: 6px; padding: .4rem .6rem; font-size: .85rem; }
+  .controls input { width: 180px; }
+  .controls select { max-width: 200px; }
+  .controls button { background: #2563eb; color: #fff; border: 0; border-radius: 6px; padding: .45rem .8rem; cursor: pointer; font-size: .85rem; }
+  .controls button:hover { background: #1d4ed8; }
+  #map { height: calc(100vh - 52px); width: 100%; background: #0b1220; }
+  .legend { position: absolute; bottom: 12px; left: 12px; z-index: 1000; background: rgba(17,24,39,.92); padding: .6rem .8rem; border-radius: 8px; font-size: .78rem; line-height: 1.7; border: 1px solid #374151; }
+  .legend b { color: #fff; }
+  .ship-icon { text-align: center; line-height: 1; }
+  .ship-icon .arrow { display: inline-block; font-size: 20px; text-shadow: 0 0 3px #000; }
+  .leaflet-popup-content-wrapper { background: #111827; color: #e5e7eb; }
+  .leaflet-popup-content { margin: .7rem .9rem; font-size: .85rem; line-height: 1.6; }
+  .leaflet-popup-content b { color: #fff; }
+  .leaflet-popup-tip { background: #111827; }
+  .popup-title { font-size: 1rem; margin-bottom: .2rem; }
+  .muted { color: #9ca3af; font-size: .78rem; }
+  @media (max-width: 640px) { .controls { margin-left: 0; width: 100%; } #map { height: calc(100vh - 96px); } }
+</style>
+</head>
+<body>
+<header>
+  <a class="brand" href="/">⚡ PecutAigan</a>
+  <span>🚢 Peta Kapal AIS</span>
+  <span id="status" class="status">Menghubungkan…</span>
+  <span id="count" class="muted"></span>
+  <div class="controls">
+    <input id="search" type="search" placeholder="Cari nama / MMSI…" aria-label="Cari kapal">
+    <select id="station" aria-label="Filter stasiun VTS"><option value="">Semua stasiun VTS</option></select>
+    <button id="refresh" type="button">↻ Refresh</button>
+  </div>
+</header>
+<div id="map"></div>
+<div class="legend">
+  <b>Legenda</b><br>
+  <span style="color:#22c55e">▲</span> Berlayar &nbsp;
+  <span style="color:#eab308">▲</span> Jangkar &nbsp;
+  <span style="color:#60a5fa">▲</span> Sandar &nbsp;
+  <span style="color:#9ca3af">▲</span> Tidak diketahui<br>
+  <span class="muted">Arah segitiga = haluan kapal. Klik kapal untuk detail.</span>
+</div>
+
+<script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js" integrity="sha256-20nQCchB9co0qIjJZRGuk2/Z9VM+kNiyxNV1lvTlZBo=" crossorigin=""></script>
+<script>
+// Peta Kapal AIS — PecutAigan
+// Sumber data: Pages Function /api/ais-vessels (proxy ke server AIS).
+// Override endpoint untuk testing: /ais/?api=https://contoh/api/vessels
+// Bentuk data yang diterima: array kapal, {vessels:[...]}, {data:[...]},
+// atau GeoJSON FeatureCollection. Field dinormalisasi di normalizeVessel().
+
+const STATIONS = ["Semarang","TERSUS_Dutabahari_Menara_Line_Dockyard_Pasirmas","TERSUS_Mitratama_Perkasa_Pasirmas","TERSUS_pt_semen_padang_lampung","TUKS_Gunung_Maras_Lestari","TUKS_pt_baramutiara_prima","TUKS_pt_baturona_adimulya","TUKS_pt_galangan_moramo_maelo","TUKS_pt_gunung_pelawan_lestari","TUKS_pt_semen_gresik_pontianak","TUKS_pt_semen_padang_bengkulu","TUKS_pt_semen_tonasa","TUKS_pt_solusi_bangun_indonesia","ajibata","ais_sat","anggrek","batu_licin","batulicin","belawan","bengkulu","bengkulu","benoa","bima","bitung","bojonegoro","bontang","cilacap","cirebon","dumai","fakfak","gili_selang","gili_trawangan","jambi","jemur","jepara","karimunjawa","kendawangan","ketapang","ksop_kendari","kuala_langsa","kuala_tanjung","kuala_tungkal","kupang","lembar","lps_bakauheni","lps_gilimanuk","lps_ketapang","lps_ketapang_ivef","lps_merak","lps_merak_ivef","luwuk","makasar","mamuju","manado","maratua","maumere","merak","meulaboh","muntok","nunukan","palembang","pangkalan_susu","panjang","pangkal_balam","pare_pare","patimban","priok","pt_golden_blossom_sumatra","pt_mitra_persada_resources","pt_pipit_jaya_abadi","pt_timah_muntok","pt_usaha_mitra_persada","pulau_jemur","p_edam","raha","sabang","sair","samarinda","selat_panjang","selayar","sensor_site_anggana","sensor_site_mangkalihat","sensor_site_muara_pegah","sensor_site_tanjung_intan","sibolga","sintete","sorong","srop_ambon","srop_bima","srop_labuan_bajo","srop_pekanbaru","srop_probolinggo","srop_rengat","srop_sikakap","srop_sipora","srop_sungai_guntung","srop_tapaktuan","srop_tembilahan","srop_waingapu","surabaya","tahuna","tanglad","tanjung_balai_karimun","tanjung_medang","tanjung_pandan","tanjung_parit","tanjung_sair","tanjung_santan","tarakan","tegal","toli_toli","ule_lheue"];
+
+// Data contoh — dipakai hanya bila API tidak terjangkau, supaya peta tidak kosong.
+const DEMO_VESSELS = [
+  { mmsi: "525001234", name: "KM DEMO NUSANTARA", lat: -6.09, lon: 106.88, sog: 8.4, cog: 45, heading: 45, navStatus: 0, destination: "TANJUNG PRIOK", eta: "—", station: "priok" },
+  { mmsi: "525005678", name: "KM DEMO MERAK JAYA", lat: -5.93, lon: 106.0, sog: 0, cog: 120, heading: 120, navStatus: 1, destination: "MERAK", eta: "—", station: "merak" },
+  { mmsi: "525009012", name: "KM DEMO SURABAYA", lat: -7.2, lon: 112.72, sog: 12.1, cog: 270, heading: 268, navStatus: 0, destination: "SURABAYA", eta: "—", station: "surabaya" },
+  { mmsi: "525003456", name: "KM DEMO BELAWAN", lat: 3.78, lon: 98.68, sog: 0, cog: 0, heading: 90, navStatus: 5, destination: "BELAWAN", eta: "—", station: "belawan" },
+  { mmsi: "525007890", name: "KM DEMO MAKASSAR", lat: -5.13, lon: 119.4, sog: 6.2, cog: 180, heading: 180, navStatus: 0, destination: "MAKASSAR", eta: "—", station: "makasar" },
+];
+
+const params = new URLSearchParams(location.search);
+const API_URL = params.get("api") || "/api/ais-vessels";
+const REFRESH_MS = 15000;
+
+const map = L.map("map").setView([-2.5, 118], 5);
+L.tileLayer("https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png", {
+  maxZoom: 18,
+  attribution: '&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a> contributors',
+}).addTo(map);
+
+const layer = L.layerGroup().addTo(map);
+const statusEl = document.getElementById("status");
+const countEl = document.getElementById("count");
+const searchEl = document.getElementById("search");
+const stationEl = document.getElementById("station");
+
+for (const s of [...new Set(STATIONS)].sort((a, b) => a.localeCompare(b))) {
+  const opt = document.createElement("option");
+  opt.value = s; opt.textContent = s;
+  stationEl.appendChild(opt);
+}
+
+function num(v) { const n = parseFloat(v); return Number.isFinite(n) ? n : null; }
+
+function normalizeVessel(v, idx) {
+  if (!v || typeof v !== "object") return null;
+  // GeoJSON feature
+  if (v.type === "Feature" && v.geometry && Array.isArray(v.geometry.coordinates)) {
+    const p = v.properties || {};
+    return normalizeVessel({ ...p, lon: v.geometry.coordinates[0], lat: v.geometry.coordinates[1] }, idx);
+  }
+  const lat = num(v.lat ?? v.latitude ?? v.Latitude);
+  const lon = num(v.lon ?? v.lng ?? v.longitude ?? v.Longitude);
+  if (lat === null || lon === null) return null;
+  const mmsi = String(v.mmsi ?? v.MMSI ?? v.id ?? "—");
+  const name = String(v.name ?? v.shipname ?? v.shipName ?? v.vesselName ?? v.vessel_name ?? ("Kapal " + mmsi));
+  const sog = num(v.sog ?? v.speed ?? v.speedOverGround);
+  const cog = num(v.cog ?? v.course ?? v.courseOverGround);
+  const heading = num(v.heading ?? v.hdg ?? v.trueHeading) ?? cog ?? 0;
+  const navRaw = v.navStatus ?? v.nav_status ?? v.status ?? v.navigationalStatus;
+  const nav = navRaw === null || navRaw === undefined ? null : parseInt(navRaw, 10);
+  return {
+    mmsi, name,
+    lat, lon,
+    sog: sog === null ? null : sog,
+    cog: cog === null ? null : cog,
+    heading,
+    navStatus: Number.isFinite(nav) ? nav : null,
+    destination: String(v.destination ?? v.dest ?? "—"),
+    eta: String(v.eta ?? v.ETA ?? "—"),
+    station: String(v.station ?? v.source ?? v.vts ?? ""),
+    updatedAt: v.updatedAt ?? v.timestamp ?? v.lastSeen ?? v.last_seen ?? null,
+    _key: mmsi + "-" + idx,
+  };
+}
+
+function colorFor(nav) {
+  if (nav === 0) return "#22c55e"; // underway
+  if (nav === 1) return "#eab308"; // at anchor
+  if (nav === 5) return "#60a5fa"; // moored
+  return "#9ca3af";
+}
+
+function navLabel(nav) {
+  const labels = { 0: "Berlayar", 1: "Jangkar", 2: "Tidak dikemudikan", 3: "Manuver terbatas", 4: "Terbatas draft", 5: "Sandar", 6: "Kandas", 7: "Menangkap ikan", 8: "Berlayar (layar)" };
+  return nav === null ? "Tidak diketahui" : (labels[nav] ?? ("Status " + nav));
+}
+
+function popupHtml(v) {
+  const seen = v.updatedAt ? new Date(v.updatedAt).toLocaleString("id-ID") : "—";
+  return `<div class="popup-title"><b>${escapeHtml(v.name)}</b></div>` +
+    `MMSI: <b>${escapeHtml(v.mmsi)}</b><br>` +
+    `Status: ${escapeHtml(navLabel(v.navStatus))}<br>` +
+    `SOG: ${v.sog === null ? "—" : v.sog.toFixed(1) + " kn"} &nbsp; COG: ${v.cog === null ? "—" : Math.round(v.cog) + "°"}<br>` +
+    `Haluan: ${Math.round(v.heading)}°<br>` +
+    `Tujuan: ${escapeHtml(v.destination)} &nbsp; ETA: ${escapeHtml(v.eta)}<br>` +
+    `Posisi: ${v.lat.toFixed(4)}, ${v.lon.toFixed(4)}<br>` +
+    (v.station ? `Stasiun: ${escapeHtml(v.station)}<br>` : "") +
+    `<span class="muted">Update: ${escapeHtml(seen)}</span>`;
+}
+
+function escapeHtml(s) {
+  return String(s).replace(/[&<>"']/g, (c) => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;", "'": "&#39;" }[c]));
+}
+
+let allVessels = [];
+
+function render() {
+  layer.clearLayers();
+  const q = searchEl.value.trim().toLowerCase();
+  const st = stationEl.value;
+  const shown = allVessels.filter((v) => {
+    if (st && v.station !== st) return false;
+    if (q && !(v.name.toLowerCase().includes(q) || v.mmsi.includes(q))) return false;
+    return true;
+  });
+  for (const v of shown) {
+    const color = colorFor(v.navStatus);
+    const icon = L.divIcon({
+      className: "ship-icon",
+      html: `<span class="arrow" style="color:${color};transform:rotate(${v.heading}deg)">▲</span>`,
+      iconSize: [20, 20],
+      iconAnchor: [10, 10],
+    });
+    L.marker([v.lat, v.lon], { icon, title: v.name })
+      .bindPopup(popupHtml(v))
+      .addTo(layer);
+  }
+  countEl.textContent = shown.length + " kapal ditampilkan dari " + allVessels.length + " total";
+}
+
+async function load(demoFallback = true) {
+  try {
+    const res = await fetch(API_URL, { headers: { Accept: "application/json" } });
+    if (!res.ok) throw new Error("HTTP " + res.status);
+    const json = await res.json();
+    const raw = Array.isArray(json) ? json
+      : Array.isArray(json.vessels) ? json.vessels
+      : Array.isArray(json.data) ? json.data
+      : Array.isArray(json.features) ? json.features
+      : [];
+    allVessels = raw.map(normalizeVessel).filter(Boolean);
+    if (!allVessels.length) throw new Error("API mengembalikan 0 kapal");
+    statusEl.textContent = "● LIVE";
+    statusEl.className = "status live";
+    render();
+    return true;
+  } catch (err) {
+    if (demoFallback) {
+      allVessels = DEMO_VESSELS.map((v, i) => normalizeVessel(v, i)).filter(Boolean);
+      statusEl.textContent = "● DEMO — API tidak terjangkau (" + err.message + ")";
+      statusEl.className = "status demo";
+      render();
+      return false;
+    }
+    statusEl.textContent = "● Gagal memuat (" + err.message + ")";
+    statusEl.className = "status error";
+    return false;
+  }
+}
+
+searchEl.addEventListener("input", render);
+stationEl.addEventListener("change", render);
+document.getElementById("refresh").addEventListener("click", () => load(false));
+
+load();
+setInterval(() => { if (!document.hidden) load(false); }, REFRESH_MS);
+</script>
+</body>
+</html>
