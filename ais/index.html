@@ -87,10 +87,33 @@ const API_URL = params.get("api") || "/api/ais-vessels";
 const REFRESH_MS = 15000;
 
 const map = L.map("map").setView([-2.5, 118], 5);
-L.tileLayer("https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png", {
+const osmLayer = L.tileLayer("https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png", {
   maxZoom: 18,
   attribution: '&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a> contributors',
-}).addTo(map);
+});
+const satelliteLayer = L.tileLayer("https://server.arcgisonline.com/ArcGIS/rest/services/World_Imagery/MapServer/tile/{z}/{y}/{x}", {
+  maxZoom: 18,
+  attribution: "Esri, Maxar, Earthstar Geographics",
+});
+osmLayer.addTo(map);
+const baseLayers = { "Peta (OSM)": osmLayer, "Satelit (Esri)": satelliteLayer };
+L.control.layers(baseLayers).addTo(map);
+
+// Tombol layar penuh (Fullscreen API, tanpa dependensi tambahan).
+const FullscreenControl = L.Control.extend({
+  onAdd() {
+    const btn = L.DomUtil.create("button", "leaflet-bar leaflet-control");
+    btn.textContent = "⛶";
+    btn.title = "Layar penuh";
+    btn.style.cssText = "width:30px;height:30px;cursor:pointer;background:#fff;font-size:16px;line-height:1;";
+    btn.onclick = () => {
+      if (document.fullscreenElement) document.exitFullscreen();
+      else document.getElementById("map").requestFullscreen();
+    };
+    return btn;
+  },
+});
+new FullscreenControl({ position: "topright" }).addTo(map);
 
 const layer = L.layerGroup().addTo(map);
 const trailLayer = L.layerGroup().addTo(map);
